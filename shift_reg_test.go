@@ -7,7 +7,7 @@ import (
 )
 
 func TestShiftReg(t *testing.T) {
-	sr := newShiftReg(3)
+	sr := newShiftReg[uint64](3)
 
 	require.Equal(t, sr.Shift(1), uint64(0))
 	require.Equal(t, sr.Shift(2), uint64(0))

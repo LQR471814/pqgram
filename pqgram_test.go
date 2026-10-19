@@ -9,10 +9,10 @@ import (
 )
 
 func TestNewProfile(t *testing.T) {
-	T1, err := NewConcreteTree(
+	T1, err := NewConcreteTree[uint64, uint64](
 		6,
 		[]uint64{'a', 'a', 'e', 'b', 'b', 'c'},
-		slices.Values([]ConcreteEdge{
+		slices.Values([]ConcreteEdge[uint64]{
 			{
 				Parent: 0,
 				Child:  1,
@@ -39,10 +39,10 @@ func TestNewProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	T2, err := NewConcreteTree(
+	T2, err := NewConcreteTree[uint64, uint64](
 		6,
 		[]uint64{'a', 'a', 'e', 'b', 'b', 'x'},
-		slices.Values([]ConcreteEdge{
+		slices.Values([]ConcreteEdge[uint64]{
 			{
 				Parent: 0,
 				Child:  1,
@@ -69,13 +69,13 @@ func TestNewProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	t1rows := NewConcreteTreeRows()
+	t1rows := NewConcreteTreeRows[uint64, uint64]()
 	err = MakeTreeRows(T1, t1rows)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t2rows := NewConcreteTreeRows()
+	t2rows := NewConcreteTreeRows[uint64, uint64]()
 	err = MakeTreeRows(T2, t2rows)
 	if err != nil {
 		t.Fatal(err)

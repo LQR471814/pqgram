@@ -28,8 +28,8 @@ func (i Interval) Size() uint64 {
 //   - Ancestor intervals must contain descendant intervals
 //   - Sibling intervals are disjoint and are ordered corresponding to the
 //     order of the siblings
-type Node struct {
-	Label    uint64
+type Node[L Integer] struct {
+	Label    L
 	Interval Interval
 }
 
@@ -37,38 +37,40 @@ type Node struct {
 //
 // It is analogous to a database cursor where each row is one node and rows are
 // ordered in pre-order.
-type TreeCursor = iter.Seq[Node]
+type TreeCursor[L Integer] = iter.Seq[Node[L]]
 
-// Tree represents a general tree interface that can be used for traversal
-type Tree interface {
-	Root() uint64
-	Vertices() iter.Seq[uint64]
+// Tree represents a general tree interface that can be used for traversal.
+//
+// V is the vertex id type, L is the label type.
+type Tree[V, L Integer] interface {
+	Root() V
+	Vertices() iter.Seq[V]
 	// A vertex label should be a value >= 1
-	Label(vertex uint64) uint64
-	Children(vertex uint64) iter.Seq[uint64]
+	Label(vertex V) L
+	Children(vertex V) iter.Seq[V]
 }
 
 // OutputRows represents an interface to receive the "database operations"
 // which MakeTreeRows performs to obtain a valid list of rows
-type OutputRows interface {
-	Append(vertexId uint64, node *Node) error
-	UpdateIntervalRight(vertexId, right uint64) error
+type OutputRows[V, L Integer] interface {
+	Append(vertexId V, node *Node[L]) error
+	UpdateIntervalRight(vertexId V, right uint64) error
 }
 
 // MakeTreeRows constructs a valid list of node rows (and their intervals) in
 // the output by pre-order traversal of the tree.
-func MakeTreeRows(tree Tree, output OutputRows) error {
+func MakeTreeRows[V, L Integer](tree Tree[V, L], output OutputRows[V, L]) error {
 	counter := uint64(0)
 	return makeTreeRowsHelper(tree, output, tree.Root(), &counter)
 }
 
-func makeTreeRowsHelper(
-	tree Tree,
-	output OutputRows,
-	rootId uint64,
+func makeTreeRowsHelper[V, L Integer](
+	tree Tree[V, L],
+	output OutputRows[V, L],
+	rootId V,
 	counter *uint64,
 ) (err error) {
-	rootNode := Node{
+	rootNode := Node[L]{
 		Label:    tree.Label(rootId),
 		Interval: Interval{Left: *counter},
 	}
@@ -91,26 +93,26 @@ func makeTreeRowsHelper(
 	return
 }
 
-type ConcreteEdge struct {
-	Parent, Child uint64
+type ConcreteEdge[V Integer] struct {
+	Parent, Child V
 }
 
-type ConcreteTree struct {
-	vertexCount uint64
-	labels      []uint64
-	children    map[uint64][]uint64
+type ConcreteTree[V, L Integer] struct {
+	vertexCount V
+	labels      []L
+	children    map[V][]V
 }
 
 // - root is always 0
 // - vertex ids are all values [0, vertexCount)
 // - labels of an index i, will correspond to vertex i
 // - edges should refer vertex ids
-func NewConcreteTree(
-	vertexCount uint64,
-	labels []uint64,
-	edges iter.Seq[ConcreteEdge],
-) (out *ConcreteTree, err error) {
-	if vertexCount != uint64(len(labels)) {
+func NewConcreteTree[V, L Integer](
+	vertexCount V,
+	labels []L,
+	edges iter.Seq[ConcreteEdge[V]],
+) (out *ConcreteTree[V, L], err error) {
+	if uint64(vertexCount) != uint64(len(labels)) {
 		err = fmt.Errorf(
 			"number of vertices (%d) != number of labels (%d)",
 			vertexCount, len(labels),
@@ -118,10 +120,10 @@ func NewConcreteTree(
 		return
 	}
 
-	out = &ConcreteTree{
+	out = &ConcreteTree[V, L]{
 		vertexCount: vertexCount,
 		labels:      labels,
-		children:    make(map[uint64][]uint64),
+		children:    make(map[V][]V),
 	}
 
 	for e := range edges {
@@ -145,13 +147,13 @@ func NewConcreteTree(
 	return
 }
 
-func (t *ConcreteTree) Root() uint64 {
+func (t *ConcreteTree[V, L]) Root() V {
 	return 0
 }
 
-func (t *ConcreteTree) Vertices() iter.Seq[uint64] {
-	return func(yield func(uint64) bool) {
-		for i := uint64(0); i < t.vertexCount; i++ {
+func (t *ConcreteTree[V, L]) Vertices() iter.Seq[V] {
+	return func(yield func(V) bool) {
+		for i := V(0); i < t.vertexCount; i++ {
 			if !yield(i) {
 				break
 			}
@@ -159,38 +161,38 @@ func (t *ConcreteTree) Vertices() iter.Seq[uint64] {
 	}
 }
 
-func (t *ConcreteTree) Label(vertex uint64) uint64 {
+func (t *ConcreteTree[V, L]) Label(vertex V) L {
 	return t.labels[vertex]
 }
 
-func (t *ConcreteTree) Children(vertex uint64) iter.Seq[uint64] {
+func (t *ConcreteTree[V, L]) Children(vertex V) iter.Seq[V] {
 	return slices.Values(t.children[vertex])
 }
 
-type ConcreteTreeRows struct {
-	rows []uint64
-	data map[uint64]*Node
+type ConcreteTreeRows[V, L Integer] struct {
+	rows []V
+	data map[V]*Node[L]
 }
 
-func NewConcreteTreeRows() *ConcreteTreeRows {
-	return &ConcreteTreeRows{
-		data: make(map[uint64]*Node),
+func NewConcreteTreeRows[V, L Integer]() *ConcreteTreeRows[V, L] {
+	return &ConcreteTreeRows[V, L]{
+		data: make(map[V]*Node[L]),
 	}
 }
 
-func (r *ConcreteTreeRows) Append(vertexId uint64, node *Node) error {
+func (r *ConcreteTreeRows[V, L]) Append(vertexId V, node *Node[L]) error {
 	r.rows = append(r.rows, vertexId)
 	r.data[vertexId] = node
 	return nil
 }
 
-func (r *ConcreteTreeRows) UpdateIntervalRight(vertexId, right uint64) error {
+func (r *ConcreteTreeRows[V, L]) UpdateIntervalRight(vertexId V, right uint64) error {
 	r.data[vertexId].Interval.Right = right
 	return nil
 }
 
-func (r *ConcreteTreeRows) Cursor() TreeCursor {
-	return func(yield func(Node) bool) {
+func (r *ConcreteTreeRows[V, L]) Cursor() TreeCursor[L] {
+	return func(yield func(Node[L]) bool) {
 		for _, id := range r.rows {
 			if !yield(*r.data[id]) {
 				break

@@ -10,19 +10,19 @@ import (
 
 const uint64_byte_size uint64 = 8
 
-type labelsMultiset struct {
+type labelsMultiset[L Integer] struct {
 	values     map[uint64]uint64
 	labelsBuff []byte
 }
 
-func newLabelsMultiset(labelsBuffsize uint64) *labelsMultiset {
-	return &labelsMultiset{
+func newLabelsMultiset[L Integer](labelsBuffsize uint64) *labelsMultiset[L] {
+	return &labelsMultiset[L]{
 		values:     make(map[uint64]uint64),
 		labelsBuff: make([]byte, labelsBuffsize*uint64_byte_size),
 	}
 }
 
-func (m *labelsMultiset) Add(labels iter.Seq[uint64]) {
+func (m *labelsMultiset[L]) Add(labels iter.Seq[L]) {
 	i := uint64(0)
 	for l := range labels {
 		if i >= uint64(len(m.labelsBuff)) {
@@ -35,7 +35,7 @@ func (m *labelsMultiset) Add(labels iter.Seq[uint64]) {
 	m.values[key]++
 }
 
-func (m *labelsMultiset) IntersectCardinality(other *labelsMultiset) uint64 {
+func (m *labelsMultiset[L]) IntersectCardinality(other *labelsMultiset[L]) uint64 {
 	card := uint64(0)
 
 	for otherKey, otherVal := range other.values {
@@ -49,7 +49,7 @@ func (m *labelsMultiset) IntersectCardinality(other *labelsMultiset) uint64 {
 	return card
 }
 
-func (m *labelsMultiset) UnionCardinality(other *labelsMultiset) uint64 {
+func (m *labelsMultiset[L]) UnionCardinality(other *labelsMultiset[L]) uint64 {
 	card := uint64(0)
 
 	// the cardinality of the union of two multisets is equal to their

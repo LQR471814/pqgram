@@ -5,24 +5,31 @@ import (
 	"iter"
 )
 
-const NULL_LABEL uint64 = 0
-
-type Profile struct {
-	P, Q     uint64
-	multiset *labelsMultiset
+// nullLabel returns the sentinel "null" label for a given label type.
+//
+// It is the zero value of the label type (0), so user-supplied labels should
+// be values >= 1.
+func nullLabel[L Integer]() L {
+	var z L
+	return z
 }
 
-func NewProfile(cur TreeCursor, p, q uint64) (prof *Profile, err error) {
-	prof = &Profile{
+type Profile[L Integer] struct {
+	P, Q     uint64
+	multiset *labelsMultiset[L]
+}
+
+func NewProfile[L Integer](cur TreeCursor[L], p, q uint64) (prof *Profile[L], err error) {
+	prof = &Profile[L]{
 		P:        p,
 		Q:        q,
-		multiset: newLabelsMultiset(p + q),
+		multiset: newLabelsMultiset[L](p + q),
 	}
 
 	next, stop := iter.Pull(cur)
 	defer stop()
 
-	anc := newShiftReg(p)
+	anc := newShiftReg[L](p)
 	root, ok := next()
 	if !ok {
 		err = fmt.Errorf("no root, cursor stopped immediately")
@@ -34,15 +41,15 @@ func NewProfile(cur TreeCursor, p, q uint64) (prof *Profile, err error) {
 	return
 }
 
-func profileHelper(
-	cursorNode *Node,
-	next func() (Node, bool),
-	root Node,
-	prof *Profile,
-	anc *shiftReg,
+func profileHelper[L Integer](
+	cursorNode *Node[L],
+	next func() (Node[L], bool),
+	root Node[L],
+	prof *Profile[L],
+	anc *shiftReg[L],
 ) bool {
 	anc.Shift(root.Label)
-	sib := newShiftReg(prof.Q)
+	sib := newShiftReg[L](prof.Q)
 
 	// if !ok, we are at the last leaf node, so cur.Interval.Size() must be 1
 	cur, ok := next()
@@ -68,14 +75,14 @@ func profileHelper(
 	}
 
 	for k := uint64(1); k <= prof.Q-1; k++ {
-		sib.Shift(NULL_LABEL)
+		sib.Shift(nullLabel[L]())
 		prof.multiset.Add(IterJoin(anc.Values(), sib.Values()))
 	}
 
 	return true
 }
 
-func Distance(a, b *Profile) (out float64, err error) {
+func Distance[L Integer](a, b *Profile[L]) (out float64, err error) {
 	if a.P != b.P || a.Q != b.Q {
 		err = fmt.Errorf(
 			"PQ parameters are mismatched (%d, %d) != (%d, %d)",
