@@ -1,4 +1,4 @@
-module pqgram
+module github.com/LQR471814/pqgram
 
 go 1.26.7
 
