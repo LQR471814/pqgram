@@ -1,34 +1,37 @@
 package pqgram
 
 import (
+	"math"
 	"slices"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewProfile(t *testing.T) {
-	T1, err := NewTree(
+	T1, err := NewConcreteTree(
 		6,
 		[]uint64{'a', 'a', 'e', 'b', 'b', 'c'},
-		slices.Values([]Edge{
+		slices.Values([]ConcreteEdge{
+			{
+				Parent: 0,
+				Child:  1,
+			},
+			{
+				Parent: 0,
+				Child:  4,
+			},
+			{
+				Parent: 0,
+				Child:  5,
+			},
 			{
 				Parent: 1,
 				Child:  2,
 			},
 			{
 				Parent: 1,
-				Child:  5,
-			},
-			{
-				Parent: 1,
-				Child:  6,
-			},
-			{
-				Parent: 2,
 				Child:  3,
-			},
-			{
-				Parent: 2,
-				Child:  4,
 			},
 		}),
 	)
@@ -36,43 +39,65 @@ func TestNewProfile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	T2, err := NewTree(
+	T2, err := NewConcreteTree(
 		6,
 		[]uint64{'a', 'a', 'e', 'b', 'b', 'x'},
-		slices.Values([]Edge{
+		slices.Values([]ConcreteEdge{
+			{
+				Parent: 0,
+				Child:  1,
+			},
+			{
+				Parent: 0,
+				Child:  4,
+			},
+			{
+				Parent: 0,
+				Child:  5,
+			},
 			{
 				Parent: 1,
 				Child:  2,
 			},
 			{
 				Parent: 1,
-				Child:  5,
-			},
-			{
-				Parent: 1,
-				Child:  6,
-			},
-			{
-				Parent: 2,
 				Child:  3,
-			},
-			{
-				Parent: 2,
-				Child:  4,
 			},
 		}),
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t1rows := NewConcreteTreeRows()
+	err = MakeTreeRows(T1, t1rows)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t2rows := NewConcreteTreeRows()
+	err = MakeTreeRows(T2, t2rows)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	p := uint64(2)
 	q := uint64(3)
-	prof1 := NewProfile(T1, p, q, 1)
-	prof2 := NewProfile(T2, p, q, 1)
+
+	prof1, err := NewProfile(t1rows.Cursor(), p, q)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	prof2, err := NewProfile(t2rows.Cursor(), p, q)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	dist, err := Distance(prof1, prof2)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(dist)
+	require.Equal(t, 0.31, math.Round(dist*100)/100, "Wrong (rounded) distance value.")
 }
