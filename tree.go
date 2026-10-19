@@ -44,7 +44,6 @@ type TreeCursor[L Integer] = iter.Seq[Node[L]]
 // V is the vertex id type, L is the label type.
 type Tree[V, L Integer] interface {
 	Root() V
-	Vertices() iter.Seq[V]
 	// A vertex label should be a value >= 1
 	Label(vertex V) L
 	Children(vertex V) iter.Seq[V]
@@ -149,16 +148,6 @@ func NewConcreteTree[V, L Integer](
 
 func (t *ConcreteTree[V, L]) Root() V {
 	return 0
-}
-
-func (t *ConcreteTree[V, L]) Vertices() iter.Seq[V] {
-	return func(yield func(V) bool) {
-		for i := V(0); i < t.vertexCount; i++ {
-			if !yield(i) {
-				break
-			}
-		}
-	}
 }
 
 func (t *ConcreteTree[V, L]) Label(vertex V) L {
